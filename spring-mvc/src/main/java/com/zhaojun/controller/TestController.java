@@ -24,6 +24,7 @@ public class TestController {
 
     @CustomRequestMapping("/insert")
     public void test(User user, HttpServletRequest request, HttpServletResponse response) throws IOException {
+        response.setHeader("Content-type", "text/html;charset=UTF-8");
         PrintWriter writer = response.getWriter();
         String result = testService.insert(user);
         writer.write(result);

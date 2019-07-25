@@ -9,7 +9,6 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.File;
 import java.io.IOException;
-import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -27,7 +26,7 @@ import java.util.Map;
 
 public class CustomDispatcherServlet extends HttpServlet {
 
-    private final List<String> classNames= new ArrayList<>();
+    private final List<String> classNames = new ArrayList<>();
     private final Map<String, Object> beanMap = new HashMap<>();
     private final Map<String, Object> handlerMap = new HashMap<>();
     private final List<ArgumentResolver> resolvers = new ArrayList<>();
@@ -42,8 +41,6 @@ public class CustomDispatcherServlet extends HttpServlet {
             e.printStackTrace();
         }
         handMap();
-        //System.out.println(beanMap);
-        //System.out.println(handlerMap);
     }
 
     @Override
@@ -84,6 +81,11 @@ public class CustomDispatcherServlet extends HttpServlet {
         super.doPost(req, resp);
     }
 
+    /**
+     * 扫描
+     *
+     * @param basePackage
+     */
     private void scanPackage(String basePackage) {
         //file:/D:/demo/custom/spring-mvc/target/spring-mvc/WEB-INF/classes/
         URL url = this.getClass().getClassLoader().getResource("/" + basePackage.replaceAll("\\.", "/"));
@@ -101,6 +103,13 @@ public class CustomDispatcherServlet extends HttpServlet {
         }
     }
 
+    /**
+     * ioc注册组件
+     *
+     * @throws ClassNotFoundException
+     * @throws IllegalAccessException
+     * @throws InstantiationException
+     */
     public void ioc() throws ClassNotFoundException, IllegalAccessException, InstantiationException {
         for (String className : classNames) {
             Class clazz = Class.forName(className);
@@ -109,7 +118,7 @@ public class CustomDispatcherServlet extends HttpServlet {
                 if (clazz.isAnnotationPresent(CustomRequestMapping.class)) {
                     CustomRequestMapping annotation =
                         (CustomRequestMapping)clazz.getAnnotation(CustomRequestMapping.class);
-                    beanMap.put(annotation.value(),clazz.newInstance());
+                    beanMap.put(annotation.value(), clazz.newInstance());
                 }
             }
             //service
@@ -148,6 +157,9 @@ public class CustomDispatcherServlet extends HttpServlet {
         }
     }
 
+    /**
+     * 处理器映射 说白了就是一个url(@requestMapping)对应一个方法
+     */
     private void handMap() {
         for (Map.Entry<String, Object> entry : beanMap.entrySet()) {
             Class<?> clazz = entry.getValue().getClass();

@@ -9,6 +9,12 @@ import com.zhaojun.entity.User;
 
 public interface TestDao {
 
+    /**
+     * 模拟插入数据
+     *
+     * @param user
+     * @return
+     */
     String insert(User user);
 
 }

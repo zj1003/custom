@@ -12,7 +12,7 @@ import com.zhaojun.entity.User;
 @CustomService("testService")
 public class TestService {
 
-    @CustomAutowired
+    @CustomAutowired("testDao")
     private TestDao testDao;
 
     public String insert(User user) {

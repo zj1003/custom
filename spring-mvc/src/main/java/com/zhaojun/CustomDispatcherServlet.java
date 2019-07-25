@@ -1,6 +1,7 @@
 package com.zhaojun;
 
 import com.zhaojun.annotation.*;
+import com.zhaojun.resolver.ArgumentResolver;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
@@ -10,6 +11,7 @@ import java.io.File;
 import java.io.IOException;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.net.URL;
@@ -28,6 +30,7 @@ public class CustomDispatcherServlet extends HttpServlet {
     private final List<String> classNames= new ArrayList<>();
     private final Map<String, Object> beanMap = new HashMap<>();
     private final Map<String, Object> handlerMap = new HashMap<>();
+    private final List<ArgumentResolver> resolvers = new ArrayList<>();
 
     @Override
     public void init() throws ServletException {
@@ -53,13 +56,27 @@ public class CustomDispatcherServlet extends HttpServlet {
             System.out.println("404  没有找到");
         }
         Parameter[] parameters = method.getParameters();
+        Object[] paramObjs = new Object[parameters.length];
+        int i = 0;
         for (Parameter parameter : parameters) {
             Class<?> parameterType = parameter.getType();
-            String parameterName = parameter.getName();
-
-
+            for (ArgumentResolver resolver : resolvers) {
+                if (resolver.isSupport(parameterType)) {
+                    try {
+                        paramObjs[i++] = resolver.resolve(req, resp, parameterType);
+                    } catch (IllegalAccessException | InstantiationException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
         }
-
+        String[] split = path.split("/");
+        try {
+            Object bean = beanMap.get("/" + split[1]);
+            method.invoke(bean, paramObjs);
+        } catch (IllegalAccessException | InvocationTargetException e) {
+            e.printStackTrace();
+        }
     }
 
     @Override
@@ -98,7 +115,11 @@ public class CustomDispatcherServlet extends HttpServlet {
             //service
             if (clazz.isAnnotationPresent(CustomService.class)) {
                 CustomService annotation = (CustomService)clazz.getAnnotation(CustomService.class);
-                beanMap.put(annotation.value(), clazz.newInstance());
+                Object o = clazz.newInstance();
+                if (ArgumentResolver.class.isAssignableFrom(clazz)) {
+                    resolvers.add((ArgumentResolver)o);
+                }
+                beanMap.put(annotation.value(), o);
             }
             //repository
             if (clazz.isAnnotationPresent(CustomRepository.class)) {
@@ -108,20 +129,20 @@ public class CustomDispatcherServlet extends HttpServlet {
         }
     }
 
+    /**
+     * 依赖注入
+     *
+     * @throws IllegalAccessException
+     */
     public void di() throws IllegalAccessException {
         for (Map.Entry<String, Object> entry : beanMap.entrySet()) {
             Class<?> clazz = entry.getValue().getClass();
-            Field[] fields = clazz.getFields();
+            Field[] fields = clazz.getDeclaredFields();
             for (Field field : fields) {
-                Annotation[] annotations = field.getAnnotations();
-                field.setAccessible(true);
-                for (Annotation annotation : annotations) {
-                    if (annotation.equals(CustomService.class)) {
-                        field.set(entry.getValue(), beanMap.get(((CustomService)annotation).value()));
-                    }
-                    if (annotation.equals(CustomRepository.class)) {
-                        field.set(entry.getValue(), beanMap.get(((CustomRepository)annotation).value()));
-                    }
+                if (field.isAnnotationPresent(CustomAutowired.class)) {
+                    field.setAccessible(true);
+                    CustomAutowired annotation = field.getAnnotation(CustomAutowired.class);
+                    field.set(entry.getValue(), beanMap.get(annotation.value()));
                 }
             }
         }

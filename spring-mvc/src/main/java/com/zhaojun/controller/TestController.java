@@ -19,7 +19,7 @@ import java.io.PrintWriter;
 @CustomRequestMapping("/test")
 public class TestController {
 
-    @CustomAutowired
+    @CustomAutowired("testService")
     private TestService testService;
 
     @CustomRequestMapping("/insert")
